@@ -1,4 +1,4 @@
-#How to test match into arrays in jinja2 templates
+# How to test match into arrays in jinja2 templates
 
 The following playbook is an example to filter matching a certain pattern:
 

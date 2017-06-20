@@ -5,37 +5,37 @@ Those have access to some services over this network. However, they should manag
 We will extend extend the bridge thru vxlan ports over all the bare metals. also, every baremetal will provide DHCP locally to its own bridge
 Finally, flow rules filter DHCP packets beyong the baremetal over the same bridge.  
 
-#Create a VXLAN between two servers to extend a bridge
+## Create a VXLAN between two servers to extend a bridge
 Add a new VXLAN port to a brdge called "core"
-'''
+```
 ovs-vsctl add-port core vxlan01 -- set Interface vxlan01 type=vxlan options:remote_ip=10.88.44.131 options:key=20
-'''
+```
 Remove a VXLAN port from a bridge called "core"
-'''
+```
 ovs-vsctl del-port core vxlan01
-'''
+```
 
-#Create a internal port to connect VMs from Host
+# Create a internal port to connect VMs from Host
 Adding internal port called sdn01-port to bridge core 
-'''
+```
 ovs-vsctl add-port core sdn01-port -- set Interface sdn01-port type=internal
-'''
+```
 You should set an address as follow (CentOS):
-'''
+```
 ifconfig sdn01-port 192.168.0.2/24 up
-'''
+```
 
-#Create a flow to lock DHCP traffic
-'''
+# Create a flow to lock DHCP traffic
+```
 ovs-ofctl add-flow external dl_type=0x0800,nw_proto=17,tp_dst=67,in_port=1,actions=drop
 ovs-ofctl add-flow external dl_type=0x0800,nw_proto=17,tp_dst=68,in_port=1,actions=drop
-'''
+```
 Delete a flow
-'''
+```
 ovs-ofctl del-flows external dl_type=0x0800,tp_dst=67,in_port=1
-'''
-#Identify the port
-'''
+```
+# Identify the port
+```
 ovs-ofctl show external
 OFPT_FEATURES_REPLY (xid=0x2): dpid:00006633e874aa47
 n_tables:254, n_buffers:0
@@ -69,12 +69,12 @@ actions: output enqueue set_vlan_vid set_vlan_pcp strip_vlan mod_dl_src mod_dl_d
      state:      LINK_DOWN
      speed: 0 Mbps now, 0 Mbps max
 OFPT_GET_CONFIG_REPLY (xid=0x4): frags=normal miss_send_len=0
-'''
+```
 
 # DHCP Settings
 DHCP settings for NSGs
 
-'''
+```
 subnet 192.168.0.0 netmask 255.255.255.0 {
  range 192.168.0.120 192.168.0.123;
  option domain-name-servers 192.168.0.2;
@@ -84,5 +84,5 @@ subnet 192.168.0.0 netmask 255.255.255.0 {
  default-lease-time 600000;
  max-lease-time 7200000;
 }
-'''
+```
 
