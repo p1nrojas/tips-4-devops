@@ -2,7 +2,7 @@
 
 The following playbook is an example to filter matching a certain pattern:
 
-'''
+```
 - hosts: localhost
   connection: local
   vars:
@@ -20,11 +20,11 @@ The following playbook is an example to filter matching a certain pattern:
     - debug:
         var: matches
       failed_when: "(matches | length) < 1"
-'''
+```
 
 Will bring the following result:
 
-'''
+```
 [dev@e0302f0fcd8a ~]$ ansible-playbook match-example.yml
  [WARNING]: provided hosts list is empty, only localhost is available
 
@@ -50,4 +50,4 @@ ok: [localhost] => {
 PLAY RECAP *********************************************************************
 localhost                  : ok=3    changed=0    unreachable=0    failed=0
 
-'''
+```
