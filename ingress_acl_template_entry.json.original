@@ -1,0 +1,16 @@
+{
+ "policyState":"DRAFT",
+ "action": "FORWARD",
+ "description": "any_2_app_103",
+ "sourcePort": "*",
+ "destinationPort": "443",
+ "protocol": "6",
+ "priority": 103,
+ "policyState": "DRAFT",
+ "reflexive": false,
+ "stateful": false,
+ "locationType": "ANY",
+ "networkType": "ANY",
+ "etherType": "0x0800",
+ "DSCP": "*"
+}

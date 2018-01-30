@@ -1,0 +1,9 @@
+{
+ "priority": 1,
+ "allowAddressSpoof": false,
+ "allowL2AddressSpoof": false,
+ "defaultAllowIP": false,
+ "defaultAllowNonIP": false,
+ "name": "ingpol02_from_api",
+ "active": true
+}

@@ -1,0 +1,6 @@
+nuage_acl_entries:
+  - { action: "DROP", protocol: 6, location_type: "ANY", network_type: "ANY", destination_port: 1024, priority: 10, flow_logging_enabled: true, stats_logging_enabled: true }
+  - { action: "DROP", protocol: 6, location_type: "ANY", network_type: "ANY", destination_port: 1026, priority: 1, flow_logging_enabled: true, stats_logging_enabled: true }
+  - { action: "DROP", protocol: 6, location_type: "ANY", network_type: "ANY", destination_port: 1028, priority: 2, flow_logging_enabled: true, stats_logging_enabled: true }
+  - { action: "DROP", protocol: 6, location_type: "ANY", network_type: "ANY", destination_port: 1030, priority: 3, flow_logging_enabled: true, stats_logging_enabled: true }
+  - { action: "DROP", protocol: 6, location_type: "ANY", network_type: "ANY", destination_port: 1032, priority: 4, flow_logging_enabled: true, stats_logging_enabled: true }

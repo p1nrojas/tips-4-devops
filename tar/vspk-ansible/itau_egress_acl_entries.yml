@@ -1,0 +1,77 @@
+- hosts: localhost
+
+  vars:
+    nuage_auth:
+      api_username: csproot
+      api_password: csproot
+      api_enterprise: csp
+      api_url: https://10.48.224.62:8443
+      api_version: v4_0
+    enterprise_name: "OS_Nuage"
+    domain_itau: "ebd2bff0-828a-46a1-aace-0bda9d7e58a3"
+    nuage_egress_policy_to_find: "vspk-ansible-egress"
+
+  pre_tasks:
+
+    - name: Read ACL entries settings from file
+      include_vars: "{{ acl_rules_file }}"
+
+  tasks:
+
+    - name: Finding Enterprise
+      connection: local
+      nuage_vspk:
+        auth: "{{ nuage_auth }}"
+        type: Enterprise
+        command: find
+        properties:
+          name: "{{ enterprise_name }}"
+      register: nuage_enterprise
+
+    - name: Finding Domain
+      connection: local
+      nuage_vspk:
+        auth: "{{ nuage_auth }}"
+        type: Domain
+        parent_id: "{{ nuage_enterprise.id }}"
+        parent_type: Enterprise
+        command: find
+        properties:
+          name: "{{ domain_itau }}"
+      register: nuage_dom
+
+    - name: Finding egress policy ACL template
+      connection: local
+      nuage_vspk:
+        auth: "{{ nuage_auth }}"
+        type: EgressACLTemplate
+        parent_id: "{{ nuage_dom.id }}"
+        parent_type: Domain
+        command: find
+        properties:
+          name: "{{ nuage_egress_policy_to_find }}"
+      register: nuage_egress_policy
+
+    - name: Create/Remove ACL entry
+      connection: local
+      nuage_vspk:
+        auth: "{{ nuage_auth }}"
+        type: EgressACLEntryTemplate
+        parent_id: "{{ nuage_egress_policy.id }}"
+        parent_type: EgressACLTemplate
+        state: "{{ nuage_state }}"
+        match_filter: "description == 'vspk-ansible-{{ item.priority }}'"
+        properties:
+          action: "{{ item.action }}"
+          description: "vspk-ansible-{{ item.priority }}"
+          ether_type: "0x0800"
+          destination_port: "{{ item.destination_port }}"
+          location_type: "{{ item.location_type }}"
+          network_type: "{{ item.network_type }}"
+          priority: "{{ item.priority }}"
+          protocol: "{{ item.protocol }}"
+          stats_logging_enabled: "{{ item.stats_logging_enabled }}"
+          flow_logging_enabled: "{{ item.flow_logging_enabled }}"
+          source_port: "*"
+      with_items: "{{ nuage_acl_entries }}"
+    

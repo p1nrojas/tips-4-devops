@@ -1,0 +1,26 @@
+{
+    "auth": {
+        "identity": {
+            "methods": [
+                "password"
+            ],
+            "password": {
+                "user": {
+                    "domain": {
+                        "name": "Default"
+                    },
+                    "name": "nova",
+                    "password": "6ad1c4f2d6404c4c"
+                }
+            }
+        },
+        "scope": {
+            "project": {
+                "domain": {
+                    "name": "Default"
+                },
+                "name": "services"
+            }
+        }
+    }
+}

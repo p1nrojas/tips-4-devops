@@ -1,0 +1,93 @@
+#!/bin/bash
+set -x
+#
+# Starting with VSP 3.0R2, there is an officially supported way to enable FIP using
+# a VSG or VRS-G uplink port
+#
+ 
+# VSD and VRS-G Port / VLAN information
+VLAN="943"
+VSD_IP="10.48.224.61"                   # add DCM VSD IP
+GW_NAME="10.48.225.215"                 # use the TUL ip of the VRSG node created on VSD / VSC
+PORT_NAME="eno2"                        # pyshical nic use don VRSG node for trunk/ tagged external trafic
+ 
+#
+# Uplink between VRS-G and upstream Router information
+#
+UPLINK_SUBNET="192.168.145.0"           # VRS-G --> F5 Network on VLAN 937
+UPLINK_MASK="255.255.255.0"             # VRS-G / F5 Subnet on VLAN 937
+VRSG_IP="192.168.145.2"                 # VRS-G Interface IP connected to F5
+UPLINK_GW="192.168.145.1"               # ROUTER IP ON SWITCH main switch 10.1.64.21
+UPLINK_GW_MAC="00:22:BD:F8:19:FF"       # MAC of F5 Interface (can issue an "arp -a" on VRS-G to confirm)
+#
+ 
+if [ $# -eq 1 ]; then # remote install
+echo "Performing remote install to root@'$1' (requires PermitRootLogin=yes in sshd config)..."
+ssh root@$1 'bash -s ' < $0
+exit 0
+elif [ $# -ne 0  ]; then
+cat <<END
+Usage (as root) $0 [remote IP]
+END
+exit -1
+fi
+ 
+# Install required software packages, if not already
+if [ -e /usr/bin/yum ]; then
+[[ `which jq` != "" ]] || yum install -y jq
+QEMU_KVM="/usr/libexec/qemu-kvm"
+QEMU_USR="qemu:qemu"
+LIBVIRTD="libvirtd"
+else
+[[ `which jq` != "" ]] || apt-get install -y jq
+QEMU_KVM="/usr/bin/kvm"
+QEMU_USR="libvirt-qemu:kvm"
+LIBVIRTD="libvirt-bin"
+fi
+ 
+# Determine Domain name for the Floating IP pool ( based on pool name )
+APIKEY=`curl -ks -H "X-Nuage-Organization: csp" -H "Content-Type: application/json" -H "Authorization: XREST Y3Nwcm9vdDpjc3Byb290" https://$VSD_IP:8443/nuage/api/v4_0/me | jq -r '.[0].APIKey'`
+TOKEN=`echo -n "csproot:$APIKEY" | base64`
+ZONE_ID=`curl -ks -H "X-Nuage-Organization: CSP" -H "X-Nuage-Filter: name=='$FIP_NAME'" -H "Content-Type: application/json" -H "Authorization: XREST $TOKEN" \
+https://$VSD_IP:8443/nuage/api/v4_0/sharednetworkresources | jq -r '.[0].parentID'`
+# if [ "$ZONE_ID" == "" ]; then
+# echo "Error: Floating IP pool named '$FIP_NAME' not found"
+# exit 1
+# fi
+ 
+# Lookup VLAN to use
+GW_ID=`curl -ks -H "X-Nuage-Filter: name=='$GW_NAME'" -H "X-Nuage-Organization: CSP" -H "Content-Type: application/json" -H "Authorization: XREST $TOKEN" \
+https://$VSD_IP:8443/nuage/api/v4_0/gateways | jq -r '.[0].ID'`
+PORT_ID=`curl -ks -H "X-Nuage-Filter: name=='$PORT_NAME'" -H "X-Nuage-Organization: CSP" -H "Content-Type: application/json" -H "Authorization: XREST $TOKEN" \
+https://$VSD_IP:8443/nuage/api/v4_0/gateways/$GW_ID/ports | jq -r '.[0].ID'`
+VLAN_ID=`curl -ks -H "X-Nuage-Filter: value==$VLAN" -H "X-Nuage-Organization: CSP" -H "Content-Type: application/json" -H "Authorization: XREST $TOKEN" \
+https://$VSD_IP:8443/nuage/api/v4_0/ports/$PORT_ID/vlans | jq -r '.[0].ID'`
+if [ "$VLAN_ID" == "" ]; then
+echo "Error: VLAN on gateway '$GW_NAME' with port '$PORT_NAME' and value '$VLAN' not found"
+exit 1
+fi
+echo "VLAN $VLAN ID: $VLAN_ID"
+ 
+# Get/Create uplink subnet
+SUBNET_ID=`curl -ks -H "X-Nuage-Filter: type=='UPLINK_SUBNET'" -H "X-Nuage-Organization: CSP" -H "Content-Type: application/json" -H "Authorization: XREST $TOKEN" https://$VSD_IP:8443/nuage/api/v4_0/sharednetworkresources | jq -r '.[0].ID'`
+# if [ "$SUBNET_ID" == "" ]; then
+echo "Creating new FIP uplink subnet in ZONE $ZONE_ID"
+curl -ks -H "X-Nuage-Organization: CSP" -H "Content-Type: application/json" -H "Authorization: XREST $TOKEN" \
+https://$VSD_IP:8443/nuage/api/v4_0/sharednetworkresources -d "{ \
+        \"name\": \"FIP 128 uplink subnet\", \
+    \"description\": \"uplink subnet fip 128\", \
+    \"address\": \"$UPLINK_SUBNET\", \
+    \"netmask\": \"$UPLINK_MASK\", \
+    \"gateway\": \"$VRSG_IP\", \
+    \"type\": \"UPLINK_SUBNET\", \
+    \"uplinkInterfaceIP\" : \"$UPLINK_GW\", \
+    \"uplinkInterfaceMAC\" : \"$UPLINK_GW_MAC\", \
+    \"sharedResourceParentID\" : \"$ZONE_ID\", \
+    \"uplinkGWVlanAttachmentID\" : \"$VLAN_ID\", \
+    \"uplinkVPortName\" : \"uplink vport VLAN $VLAN\" \
+}"
+# else
+# echo "FIP uplink subnet already exists: $SUBNET_ID"
+# fi
+
+7N05RU4

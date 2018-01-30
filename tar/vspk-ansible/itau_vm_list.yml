@@ -1,0 +1,80 @@
+- hosts: localhost
+
+  vars:
+    nuage_auth:
+      api_username: csproot
+      api_password: csproot
+      api_enterprise: csp
+      api_url: https://10.48.224.62:8443
+      api_version: v4_0
+
+#  pre_tasks:
+
+#    - name: Read ACL entries settings from file
+#      include_vars: cfg/itau_regras_01/regras02.yml
+
+  tasks:
+
+    - name: Finding Enterprise
+      connection: local
+      nuage_vspk:
+        auth: "{{ nuage_auth }}"
+        type: Enterprise
+        command: find
+        properties:
+          name: "{{ enterprise_name }}"
+      register: nuage_enterprise
+
+    - name: Finding Domain
+      connection: local
+      nuage_vspk:
+        auth: "{{ nuage_auth }}"
+        type: Domain
+        parent_id: "{{ nuage_enterprise.id }}"
+        parent_type: Enterprise
+        command: find
+        properties:
+          name: "{{ nuage_domain }}"
+      register: nuage_dom_reg
+
+    - name: Finding Policy Group
+      connection: local
+      nuage_vspk:
+        auth: "{{ nuage_auth }}"
+        type: PolicyGroup
+        parent_id: "{{ nuage_dom_reg.id }}"
+        parent_type: Domain
+        command: find
+        properties:
+          name: "{{ nuage_pgroup }}"
+      register: nuage_pg_reg
+
+    - name: get a list of all VMs
+      connection: local
+      nuage_vspk:
+        auth: "{{ nuage_auth }}"
+        type: VM
+        parent_id: "{{ nuage_dom_reg.id }}"
+        parent_type: Domain
+        command: find
+      register: vm_list_reg
+
+    - name: create a simplify list of VMs
+      set_fact:
+        vm_vport_list: "{{ vm_vport_list|default([]) + [ { 'vm_name': item.name , 'vm_id': item.ID, 'vport0_id': item.interfaces[0].VPortID } ] }}"
+      when:  item.name | search(my_pattern)
+      with_items: "{{ vm_list_reg.entities }}"
+
+    - debug:
+        var: vm_vport_list
+
+    - name: Link/Unlink vport to policy group
+      connection: local
+      nuage_vspk:
+        auth: "{{ nuage_auth }}"
+        type: VPort
+        parent_id: "{{ nuage_pg_reg.id }}"
+        parent_type: PolicyGroup
+        id: "{{ item.vport0_id }}"
+        state: "{{ nuage_state }}"
+      with_items: "{{ vm_vport_list }}"   
